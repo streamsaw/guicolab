@@ -151,9 +151,9 @@ def _setupSSHDImpl(public_key, tunnel, ngrok_token, ngrok_region, mount_gdrive_t
       f.write("PasswordAuthentication no\n")
 
   msg = ""
-  msg += "ED25519 key fingerprint of host:\n"
+  msg += "ECDSA key fingerprint of host:\n"
   ret = subprocess.run(
-                ["ssh-keygen", "-lvf", "/etc/ssh/ssh_host_ed25519_key.pub"],
+                ["ssh-keygen", "-lvf", "/etc/ssh/ssh_host_ecdsa_key.pub"],
                 stdout = subprocess.PIPE,
                 check = True,
                 universal_newlines = True)
@@ -190,18 +190,16 @@ def _setupSSHDImpl(public_key, tunnel, ngrok_token, ngrok_region, mount_gdrive_t
     port = m.group(2)
     ssh_common_options += f" -p {port}"
   elif tunnel == "argotunnel":
-    _download("https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64", "cloudflared")
-    #shutil.unpack_archive("cloudflared.tgz")
-    pathlib.Path("cloudflared").chmod(stat.S_IXUSR)
+    _download("https://bin.equinox.io/c/VdrWdbjqyF/cloudflared-stable-linux-amd64.tgz", "cloudflared.tgz")
+    shutil.unpack_archive("cloudflared.tgz")
     cfd_proc = subprocess.Popen(
         ["./cloudflared", "tunnel", "--url", "ssh://localhost:22", "--logfile", "cloudflared.log", "--metrics", "localhost:49589"],
         stdout = subprocess.PIPE,
         universal_newlines = True
         )
     time.sleep(4)
-    # Checking if child process has terminated is meaningless because recent version of cloudflared creates new a process and quit soon.
-    # if cfd_proc.poll() != None:
-    #   raise RuntimeError("Failed to run cloudflared. Return code:" + str(cfd_proc.returncode) + "\nSee clouldflared.log for more info.")
+    if cfd_proc.poll() != None:
+      raise RuntimeError("Failed to run cloudflared. Return code:" + str(cloudflared.returncode) + "\nSee clouldflared.log for more info.")
     hostname = None
     # Sometimes it takes long time to display user host name in cloudflared metrices.
     for i in range(20):
@@ -237,12 +235,6 @@ def _setupSSHDMain(public_key, tunnel, ngrok_region, check_gpu_available, mount_
     return (False, "")
 
   print("---")
-  if tunnel == "agro":
-    print("As ngrok doesn't work on colab for long time, default tunnel method has been changed to Argo tunnel.")
-    print("Please read this for more details:")
-    print("https://github.com/demotomohiro/remocolab/blob/master/README.md")
-    tunnel = "argotunnel"
-
   avail_tunnels = {"ngrok", "argotunnel"}
   if tunnel not in avail_tunnels:
     raise RuntimeError("tunnel argument must be one of " + str(avail_tunnels))
@@ -264,7 +256,7 @@ def _setupSSHDMain(public_key, tunnel, ngrok_region, check_gpu_available, mount_
 
   ngrok_token = None
 
-  if tunnel == None:
+  if tunnel == "ngrok":
     print("It seems Google is blocking ngrok.")
     print("If you got error 'kex_exchange_identification: Connection closed by remote host' when you login to ssh, you need to use Argo Tunnel instead of ngrok.")
     print("Please read this for more details:")
@@ -288,7 +280,7 @@ def _setupSSHDMain(public_key, tunnel, ngrok_region, check_gpu_available, mount_
 
   return (True, _setupSSHDImpl(public_key, tunnel, ngrok_token, ngrok_region, mount_gdrive_to, mount_gdrive_from, is_VNC))
 
-def setupSSHD(ngrok_region = None, check_gpu_available = False, tunnel = None, mount_gdrive_to = None, mount_gdrive_from = None, public_key = None):
+def setupSSHD(ngrok_region = None, check_gpu_available = False, tunnel = "ngrok", mount_gdrive_to = None, mount_gdrive_from = None, public_key = None):
   s, msg = _setupSSHDMain(public_key, tunnel, ngrok_region, check_gpu_available, mount_gdrive_to, mount_gdrive_from, False)
   print(msg)
 
@@ -417,7 +409,7 @@ subprocess.run(
                     universal_newlines = True)
   return r.stdout
 
-def setupVNC(ngrok_region = None, check_gpu_available = True, tunnel = None, mount_gdrive_to = None, mount_gdrive_from = None, public_key = None):
+def setupVNC(ngrok_region = None, check_gpu_available = True, tunnel = "ngrok", mount_gdrive_to = None, mount_gdrive_from = None, public_key = None):
   stat, msg = _setupSSHDMain(public_key, tunnel, ngrok_region, check_gpu_available, mount_gdrive_to, mount_gdrive_from, True)
   if stat:
     msg += _setupVNC()
