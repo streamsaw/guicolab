@@ -49,14 +49,14 @@ If you use Argo Tunnel:
    - add `tunnel = "ngrok"` if you use ngrok.
 - SSH only:
 ```python3
-!pip install git+https://github.com/demotomohiro/remocolab.git
+!pip install git+https://github.com/streamsaw/guicolab.git
 import remocolab
 remocolab.setupSSHD()
 ```
 
 - SSH and TurboVNC:
 ```python3
-!pip install git+https://github.com/demotomohiro/remocolab.git
+!pip install git+https://github.com/streamsaw/guicolab.git
 import remocolab
 remocolab.setupVNC()
 ```
